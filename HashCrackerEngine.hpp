@@ -288,6 +288,7 @@ public:
     }
 };
 
+// Dictionary (wordlist) based SHA1 cracker.
 class SHACracker : public HashCrackerEngine
 {
 public:
@@ -383,9 +384,7 @@ private:
     }
 };
 
-//
 // High-performance CPU brute-force MD5 cracker using std::async.
-//
 class MD5BruteforceCPUCracker : public HashCrackerEngine
 {
 public:
