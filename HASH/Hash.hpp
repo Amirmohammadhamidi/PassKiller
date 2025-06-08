@@ -6,7 +6,7 @@
 #include <vector>
 
 using namespace std;
-
+const string hash_identifier_path = "/HASH/hash-id.py";
 class Hash
 {
 private:
@@ -23,7 +23,7 @@ public:
         this->hash = hash;
     };
 
-    std::vector<std::string> predict_type(string hash)
+    std::vector<std::string> predict_type()
     {
     }
 

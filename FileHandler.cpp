@@ -19,6 +19,11 @@ void set_project_path()
     project_path = fs::current_path().string();
 }
 
+std::string get_project_path()
+{
+    return project_path;
+}
+
 void generate_commands_map()
 {
     commands["py"] = "python3 -u ";
@@ -55,15 +60,13 @@ std::string runPython(const std::string &file_path, const std::vector<std::strin
     std::string result;
     char buffer[128];
 
-    // run python script
+    // gernate command
     string command = get_command("py", file_path);
-    // append args
-    //  Append each argument
     for (const auto &arg : args)
     {
         command += " " + arg;
     }
-    cout << "running command is " << command << endl;
+    // run command
     std::shared_ptr<FILE> pipe(popen(command.c_str(), "r"), pclose);
     if (!pipe)
         throw std::runtime_error("popen() failed!");
@@ -96,5 +99,7 @@ int main()
     initialize();
     const string file_path = "/home/amirmohammad-hamidi/Desktop/PassKiller/HASH/hash-id.py";
     const std::vector<std::string> args = {"49f68a5c8493ec2c0bf489821c21fc3b"};
-    std::cout << run_file(file_path, args);
+    string output = run_file(file_path, args);
+
+    std::cout << output;
 }
