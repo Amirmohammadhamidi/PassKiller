@@ -5,19 +5,28 @@
 #include <string>
 #include <fstream>
 #include <map>
+#include <filesystem>
+#include <vector>
 
 using namespace std;
+namespace fs = std::filesystem;
 
+std::string project_path;
 std::map<std::string, std::string> commands;
 
-void initialize()
+void set_project_path()
 {
-    generate_commands_map();
+    project_path = fs::current_path().string();
 }
 
 void generate_commands_map()
 {
-    commands["py"] = "python3 ";
+    commands["py"] = "python3 -u ";
+}
+void initialize()
+{
+    generate_commands_map();
+    set_project_path();
 }
 
 std::string get_command(const std::string &extension, const std::string &file_path)
@@ -41,13 +50,20 @@ std::string getExtension(const std::string &filename)
     return filename.substr(pos + 1);
 }
 
-std::string runPython(const std::string &file_path)
+std::string runPython(const std::string &file_path, const std::vector<std::string> &args = {})
 {
     std::string result;
     char buffer[128];
 
     // run python script
     string command = get_command("py", file_path);
+    // append args
+    //  Append each argument
+    for (const auto &arg : args)
+    {
+        command += " " + arg;
+    }
+    cout << "running command is " << command << endl;
     std::shared_ptr<FILE> pipe(popen(command.c_str(), "r"), pclose);
     if (!pipe)
         throw std::runtime_error("popen() failed!");
@@ -61,7 +77,7 @@ std::string runPython(const std::string &file_path)
     return result;
 }
 
-std::string run_file(const std::string &file_path)
+std::string run_file(const std::string &file_path, const std::vector<std::string> &args = {})
 {
     if (!fileExists(file_path))
     {
@@ -70,7 +86,15 @@ std::string run_file(const std::string &file_path)
 
     string type = getExtension(file_path);
     if (type == "py")
-        return runPython(file_path);
+        return runPython(file_path, args);
 
     return "Unsupported file type!";
+}
+
+int main()
+{
+    initialize();
+    const string file_path = "/home/amirmohammad-hamidi/Desktop/PassKiller/HASH/hash-id.py";
+    const std::vector<std::string> args = {"49f68a5c8493ec2c0bf489821c21fc3b"};
+    std::cout << run_file(file_path, args);
 }
