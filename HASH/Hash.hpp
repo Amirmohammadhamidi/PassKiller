@@ -2,8 +2,8 @@
 #define Hash_hpp
 
 #include <iostream>
-#include <string>
-#include <vector>
+#include <sstream>
+#include "../FileHandler.hpp"
 
 using namespace std;
 const string hash_identifier_path = "/HASH/hash-id.py";
@@ -18,13 +18,24 @@ private:
     int length_upper_bound = 10;
 
 public:
-    Hash(string hash)
-    {
-        this->hash = hash;
-    };
+    Hash(string hash) { this->hash = hash; };
 
-    std::vector<std::string> predict_type()
+    std::vector<std::string> predict_Hash_type()
     {
+        FileHandler fh;
+        const vector<string> args = {hash};
+        const string prediction_file_path = fh.get_project_path() + "/HASH/hash-id.py";
+        string output = fh.runfile(prediction_file_path, args);
+        istringstream stream(output);
+        vector<string> tokens;
+        std::string token;
+
+        while (getline(stream, token))
+        {
+            tokens.push_back(token);
+        }
+
+        return tokens;
     }
 
     ~Hash();
