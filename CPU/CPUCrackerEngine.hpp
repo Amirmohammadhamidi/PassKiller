@@ -1,4 +1,3 @@
-#pragma once
 #include <iostream>
 #include <string>
 #include <vector>
@@ -354,6 +353,9 @@ public:
 // every Algorithm cracker implements this Class
 class HashCrackerEngine
 {
+private:
+    std::string type;
+
 protected:
     std::atomic<bool> isRunning{false};
     std::atomic<bool> passwordFound{false};
@@ -369,298 +371,58 @@ public:
         isRunning = true;
         passwordFound = false;
         foundPassword.clear();
-    }
+    };
+    void setType(std::string type) { this->type = type; };
     void stop() { isRunning = false; }
     bool running() const { return isRunning; }
+    std::string getCrackType() { return type; };
     std::string result() const { return passwordFound ? foundPassword : ""; }
 };
 
-// ==================== Crackers ====================
-
-//==================== CPU Wordlist Crackers ====================
-
-// Dictionary (wordlist) based MD5 cracker.
-class MD5Cracker : public HashCrackerEngine
+struct PasswordFoundException : public std::exception
 {
+    const char *what() const noexcept override
+    {
+        return "Password found";
+    }
+};
+
+class CPUCracker : public HashCrackerEngine
+{
+
 public:
     std::string crack(const std::string &targetHash,
-                      const std::vector<std::string> &wordlist) override
+                      const std::vector<std::string> & /*unused*/) override
     {
         initialize();
-        for (const auto &word : wordlist)
-        {
-            if (!isRunning)
-                break;
+        const char *charset = "abcdefghijklmnopqrstuvwxyz0123456789";
 
-            std::string hashed = MD5::hash(word);
-            if (hashed == targetHash)
+        try
+        {
+            generate_combination("", charset, 0, targetHash);
+        }
+        catch (const PasswordFoundException &)
+        {
+        }
+
+        return foundPassword;
+    }
+
+    void generate_combination(const std::string &str, const char *charset, int length, const std::string &targetHash)
+    {
+        if (length > 5)
+            return;
+
+        for (int i = 0; charset[i] != '\0'; ++i)
+        {
+            if (MD5::hash(str + charset[i]) == targetHash)
             {
-                foundPassword = word;
                 passwordFound = true;
-                break;
+                foundPassword = str + charset[i];
+                throw PasswordFoundException();
             }
-        }
-        isRunning = false;
-        return foundPassword;
-    }
-};
 
-// Dictionary (wordlist) based SHA1 cracker.
-class SHACracker : public HashCrackerEngine
-{
-public:
-    std::string crack(const std::string &targetHash,
-                      const std::vector<std::string> &wordlist) override
-    {
-        initialize();
-        for (const auto &word : wordlist)
-        {
-            if (!isRunning)
-                break;
-            std::string hashed = SHA1::hash(word);
-            if (hashed == targetHash)
-            {
-                foundPassword = word;
-                passwordFound = true;
-                break;
-            }
-        }
-        isRunning = false;
-        return foundPassword;
-    }
-};
-
-//==================== GPU Crackers ====================
-
-// GPU-enabled MD5 cracker (dictionary-based)
-// (This remains unchanged as it uses CPU code.)
-class MD5GPUCracker : public HashCrackerEngine
-{
-public:
-    std::string crack(const std::string &targetHash,
-                      const std::vector<std::string> &wordlist) override
-    {
-        isRunning = true;
-        passwordFound = false;
-        foundPassword.clear();
-        std::string concatenated;
-        std::vector<int> offsets;
-        std::vector<int> lengths;
-        int currentOffset = 0;
-        for (const auto &word : wordlist)
-        {
-            offsets.push_back(currentOffset);
-            lengths.push_back(static_cast<int>(word.size()));
-            concatenated += word;
-            currentOffset += static_cast<int>(word.size());
-        }
-        uint32_t targetParts[4];
-        for (int i = 0; i < 4; ++i)
-        {
-            targetParts[i] = static_cast<uint32_t>(std::stoul(targetHash.substr(i * 8, 8), nullptr, 16));
-        }
-        int foundIndex = -1;
-        launchGPUMD5Kernel(concatenated, offsets, lengths, targetParts, foundIndex);
-        if (foundIndex >= 0 && foundIndex < static_cast<int>(wordlist.size()))
-        {
-            foundPassword = wordlist[foundIndex];
-            passwordFound = true;
-        }
-        isRunning = false;
-        return foundPassword;
-    }
-
-private:
-    // In our dictionary-based method we simulate GPU work on CPU.
-    void launchGPUMD5Kernel(const std::string &concatenated,
-                            const std::vector<int> &offsets,
-                            const std::vector<int> &lengths,
-                            const uint32_t targetParts[4],
-                            int &foundIndex)
-    {
-        std::string target;
-        {
-            std::ostringstream oss;
-            oss << std::hex << std::setfill('0')
-                << std::setw(8) << targetParts[0]
-                << std::setw(8) << targetParts[1]
-                << std::setw(8) << targetParts[2]
-                << std::setw(8) << targetParts[3];
-            target = oss.str();
-        }
-        for (size_t i = 0; i < offsets.size(); ++i)
-        {
-            std::string word = concatenated.substr(offsets[i], lengths[i]);
-            std::string hashed = MD5::hash(word);
-            if (hashed == target)
-            {
-                foundIndex = static_cast<int>(i);
-                break;
-            }
-        }
-    }
-};
-
-// High-performance CPU brute-force MD5 cracker using std::async.
-class MD5BruteforceCPUCracker : public HashCrackerEngine
-{
-public:
-    std::string crack(const std::string &targetHash,
-                      const std::vector<std::string> & /*unused*/) override
-    {
-        isRunning = true;
-        passwordFound = false;
-        foundPassword.clear();
-        found.store(false);
-
-        // Total candidate count for 5-character strings (36^5)
-        const int totalCandidates = 60466176;
-        // Number of threads to launch
-        const int numThreads = 1000;
-        // Candidate range per thread
-        int segment = totalCandidates / numThreads;
-        std::string charset = "abcdefghijklmnopqrstuvwxyz0123456789";
-
-        std::vector<std::future<void>> futures;
-        for (int i = 0; i < numThreads; i++)
-        {
-            int startIdx = i * segment;
-            int endIdx = (i == numThreads - 1) ? totalCandidates : (i + 1) * segment;
-            futures.push_back(std::async(std::launch::async, [&, startIdx, endIdx, targetHash, charset]()
-                                         {
-                for (int idx = startIdx; idx < endIdx; idx++) {
-                    if(found.load())
-                        break;
-                    // Convert idx into a 5-character candidate (base-36 conversion)
-                    std::string candidate(5, ' ');
-                    int temp = idx;
-                    for (int pos = 4; pos >= 0; pos--) {
-                        candidate[pos] = charset[temp % 36];
-                        temp /= 36;
-                    }
-                    if(MD5::hash(candidate) == targetHash) {
-                        std::lock_guard<std::mutex> lock(mtx);
-                        if(!found.load()){
-                            found = true;
-                            foundPassword = candidate;
-                            passwordFound = true;
-                        }
-                        break;
-                    }
-                } }));
-        }
-        for (auto &fut : futures)
-            fut.wait();
-        isRunning = false;
-        return foundPassword;
-    }
-
-private:
-    std::atomic<bool> found{false};
-    std::mutex mtx;
-};
-
-//
-// GPU brute-force MD5 cracker (real GPU implementation)
-// This class calls our CUDA wrapper declared in MD5GPUKernel.h.
-//
-#ifdef USE_CUDA
-#include "MD5GPUKernel.h"
-class MD5BruteforceGPUCracker : public HashCrackerEngine
-{
-public:
-    std::string crack(const std::string &targetHash,
-                      const std::vector<std::string> & /*unused*/) override
-    {
-        isRunning = true;
-        passwordFound = false;
-        foundPassword.clear();
-        // We assume a candidate length of 5 and plan to search (example value)
-        int candidateLength = 5; // Example length of candidates
-        int charsetSize = 73;    // Assuming alphanumeric characters (26 letters + 10 digits)
-        int numCandidates = static_cast<int>(std::pow(charsetSize, candidateLength));
-        char foundCandidate[6] = {0};
-        bool gpuFound = false;
-        // Call the CUDA wrapper function.
-        runMD5BruteForceKernel(targetHash.c_str(), foundCandidate, &gpuFound, numCandidates);
-        if (gpuFound)
-        {
-            foundPassword = std::string(foundCandidate);
-            passwordFound = true;
-        }
-        isRunning = false;
-        return foundPassword;
-    }
-};
-#else
-// If CUDA is not enabled, fallback to simulated GPU code.
-class MD5BruteforceGPUCracker : public HashCrackerEngine
-{
-public:
-    std::string crack(const std::string &targetHash,
-                      const std::vector<std::string> & /*unused*/) override
-    {
-        return "CUDA not enabled";
-    }
-};
-#endif
-
-// ==================== CRACKER MANAGER ====================
-class HashCrackerManager
-{
-public:
-    std::unordered_map<std::string, std::unique_ptr<HashCrackerEngine>> crackers;
-    HashCrackerManager()
-    {
-        crackers["md5_cpu"] = std::make_unique<MD5Cracker>();
-        crackers["md5_gpu"] = std::make_unique<MD5GPUCracker>();
-        crackers["md5_bruteforce_cpu"] = std::make_unique<MD5BruteforceCPUCracker>();
-        crackers["md5_bruteforce_gpu"] = std::make_unique<MD5BruteforceGPUCracker>();
-        crackers["sha1_cpu"] = std::make_unique<SHACracker>();
-    }
-
-    std::string crackHash(const std::string &hash,
-                          const std::vector<std::string> &wordlist,
-                          const std::string &method,
-                          const std::string &processor)
-    {
-        std::string key = method;
-        if (processor == "gpu")
-            key += "_gpu";
-        else if (processor == "cpu")
-            key += "_cpu";
-        else
-            throw std::runtime_error("Unsupported processor type");
-
-        if (crackers.find(key) == crackers.end())
-            throw std::runtime_error("Unsupported cracking method for the given processor");
-
-        return crackers[key]->crack(hash, wordlist);
-    }
-
-    std::string crackHash(const std::string &hash,
-                          const std::vector<std::string> &wordlist,
-                          const std::string &hashType = "auto")
-    {
-        std::string type = (hashType == "auto") ? identifyHash(hash) : hashType;
-        if (crackers.find(type) == crackers.end())
-            throw std::runtime_error("Unsupported hash type");
-        return crackers[type]->crack(hash, wordlist);
-    }
-
-private:
-    std::string identifyHash(const std::string &hash)
-    {
-        switch (hash.length())
-        {
-        case 32:
-            return "md5_cpu";
-        case 40:
-            return "sha1_cpu";
-        case 64:
-            return "sha256";
-        default:
-            return "unknown";
+            generate_combination(str + charset[i], charset, length + 1, targetHash);
         }
     }
 };
