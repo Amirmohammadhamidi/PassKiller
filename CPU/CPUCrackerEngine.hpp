@@ -348,9 +348,23 @@ public:
         return result.str();
     }
 };
+// ==================== Hash Dispatcher ====================
+
+using HashFunc = std::function<std::string(const std::string &)>;
+
+HashFunc getHash(const std::string &type)
+{
+    static const std::unordered_map<std::string, HashFunc> hash_map = {
+        {"md5", &MD5::hash},
+        {"sha1", &SHA1::hash},
+        {"sha256", &SHA256::hash}};
+
+    auto it = hash_map.find(type);
+    return (it != hash_map.end()) ? it->second : nullptr;
+}
 
 // ==================== Cracker Engine ====================
-// every Algorithm cracker implements this Class
+
 class HashCrackerEngine
 {
 private:
@@ -364,6 +378,7 @@ protected:
 public:
     virtual ~HashCrackerEngine() = default;
     virtual std::string crack(const std::string &targetHash,
+                              const std::string &hashtype,
                               const std::vector<std::string> &wordlist) = 0;
 
     void initialize()
@@ -371,58 +386,71 @@ public:
         isRunning = true;
         passwordFound = false;
         foundPassword.clear();
-    };
-    void setType(std::string type) { this->type = type; };
+    }
+
+    void setType(std::string type) { this->type = std::move(type); }
+    std::string getType() { return type; }
+
     void stop() { isRunning = false; }
     bool running() const { return isRunning; }
-    std::string getCrackType() { return type; };
     std::string result() const { return passwordFound ? foundPassword : ""; }
 };
 
 struct PasswordFoundException : public std::exception
 {
-    const char *what() const noexcept override
-    {
-        return "Password found";
-    }
+    const char *what() const noexcept override { return "Password found"; }
 };
+
+// ==================== CPUCracker ====================
 
 class CPUCracker : public HashCrackerEngine
 {
-
 public:
     std::string crack(const std::string &targetHash,
+                      const std::string &hashtype,
                       const std::vector<std::string> & /*unused*/) override
     {
         initialize();
+        setType(hashtype);
         const char *charset = "abcdefghijklmnopqrstuvwxyz0123456789";
+        auto hashFunc = getHash(hashtype);
+
+        if (!hashFunc)
+        {
+            std::cerr << "Invalid hash type: " << hashtype << "\n";
+            return "";
+        }
 
         try
         {
-            generate_combination("", charset, 0, targetHash);
+            generate_combination("", charset, 0, targetHash, hashFunc);
         }
         catch (const PasswordFoundException &)
         {
         }
 
-        return foundPassword;
+        return result();
     }
 
-    void generate_combination(const std::string &str, const char *charset, int length, const std::string &targetHash)
+private:
+    void generate_combination(const std::string &str, const char *charset, int length,
+                              const std::string &targetHash, HashFunc hashFunc)
     {
-        if (length > 5)
+        if (length > 5 || !running())
             return;
 
         for (int i = 0; charset[i] != '\0'; ++i)
         {
-            if (MD5::hash(str + charset[i]) == targetHash)
+            std::string new_str = str + charset[i];
+
+            if (hashFunc(new_str) == targetHash)
             {
                 passwordFound = true;
-                foundPassword = str + charset[i];
+                foundPassword = new_str;
                 throw PasswordFoundException();
             }
 
-            generate_combination(str + charset[i], charset, length + 1, targetHash);
+            generate_combination(new_str, charset, length + 1, targetHash, hashFunc);
         }
     }
 };
