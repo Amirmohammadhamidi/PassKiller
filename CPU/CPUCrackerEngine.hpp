@@ -384,6 +384,8 @@ private:
     static void processBlock(const uint8_t *block, uint64_t *hash)
     {
         uint64_t w[80];
+
+        // Convert block to 16 64-bit words (big-endian)
         for (int i = 0; i < 16; ++i)
         {
             w[i] = (static_cast<uint64_t>(block[i * 8 + 0]) << 56) |
@@ -395,6 +397,8 @@ private:
                    (static_cast<uint64_t>(block[i * 8 + 6]) << 8) |
                    (static_cast<uint64_t>(block[i * 8 + 7]));
         }
+
+        // Extend the first 16 words into the remaining 64 words
         for (int i = 16; i < 80; ++i)
         {
             uint64_t s0 = rotr(w[i - 15], 1) ^ rotr(w[i - 15], 8) ^ (w[i - 15] >> 7);
@@ -402,9 +406,11 @@ private:
             w[i] = w[i - 16] + s0 + w[i - 7] + s1;
         }
 
+        // Initialize working variables
         uint64_t a = hash[0], b = hash[1], c = hash[2], d = hash[3];
         uint64_t e = hash[4], f = hash[5], g = hash[6], h = hash[7];
 
+        // Compression function main loop
         for (int i = 0; i < 80; ++i)
         {
             uint64_t S1 = rotr(e, 14) ^ rotr(e, 18) ^ rotr(e, 41);
@@ -424,6 +430,7 @@ private:
             a = temp1 + temp2;
         }
 
+        // Update hash values
         hash[0] += a;
         hash[1] += b;
         hash[2] += c;
@@ -435,7 +442,6 @@ private:
     }
 
 public:
-    // Initial Hash Values
     static std::string hash(const std::string &input)
     {
         uint64_t hash[8] = {
@@ -444,25 +450,45 @@ public:
             0x510e527fade682d1ULL, 0x9b05688c2b3e6c1fULL,
             0x1f83d9abfb41bd6bULL, 0x5be0cd19137e2179ULL};
 
+        // Calculate message length in bits
         uint64_t bitLength = static_cast<uint64_t>(input.size()) * 8;
+
+        // Create padding: original message + 0x80 + zeros + length (128 bits)
         std::vector<uint8_t> padded(input.begin(), input.end());
         padded.push_back(0x80);
+
+        // Pad with zeros until length ≡ 112 mod 128
         while ((padded.size() % 128) != 112)
+        {
             padded.push_back(0x00);
-        for (int i = 15; i >= 0; --i)
+        }
+
+        // Append the length in bits as a 128-bit big-endian integer
+        for (int i = 15; i >= 8; --i)
+        {
+            padded.push_back(0x00); // Upper 64 bits of length are zero for messages < 2^64 bits
+        }
+        for (int i = 7; i >= 0; --i)
+        {
             padded.push_back((bitLength >> (i * 8)) & 0xff);
+        }
 
+        // Process each 1024-bit (128-byte) block
         for (size_t i = 0; i < padded.size(); i += 128)
+        {
             processBlock(&padded[i], hash);
+        }
 
+        // Produce the final hash value (big-endian)
         std::ostringstream result;
         result << std::hex << std::setfill('0');
         for (int i = 0; i < 8; ++i)
+        {
             result << std::setw(16) << hash[i];
+        }
         return result.str();
     }
 };
-
 
 // ==================== Hash Dispatcher ====================
 
@@ -473,7 +499,7 @@ HashFunc getHash(const std::string &type)
     static const std::unordered_map<std::string, HashFunc> hash_map = {
         {"md5", &MD5::hash},
         {"sha1", &SHA1::hash},
-        {"sha256", &SHA256::hash}
+        {"sha256", &SHA256::hash},
         {"sha512", &SHA512::hash}};
 
     auto it = hash_map.find(type);
