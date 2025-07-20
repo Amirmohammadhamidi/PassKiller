@@ -520,7 +520,7 @@ public:
 
 // ==================== Crackers ====================
 
-//==================== CPU Wordlist Crackers ====================
+//==================== Normal CPU Wordlist Crackers ====================
 
 // Dictionary (wordlist) based MD5 cracker.
 class MD5CPUWordlistCracker : public HashCrackerEngine
@@ -623,7 +623,7 @@ public:
     }
 };
 
-//==================== GPU  Wordlist Crackers ====================
+//==================== GPU Simulation Wordlist Crackers ====================
 
 // GPU-enabled MD5 cracker (dictionary-based)
 class MD5GPUWordlistCracker : public HashCrackerEngine
@@ -861,7 +861,7 @@ private:
     }
 };
 
-//=================== Optimized CPU Wordlist Crackers ====================
+//=================== Optimized CPU Crackers ====================
 
 // High-performance CPU brute-force MD5 cracker using std::async.
 class MD5BruteforceCPUCracker : public HashCrackerEngine

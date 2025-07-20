@@ -41,11 +41,11 @@ def scrypt(s: bytes, salt=None) -> str:
     return hashlib.scrypt(s, salt=salt, n=2**14, r=8, p=1).hex()
 
 
-def bcrypt(s: bytes, salt: str) -> str:
+def bcrypt_hash(s: bytes, salt: str) -> str:
     return bcrypt.hashpw(s, salt.encode()).decode()
 
 
-def argon2(s: bytes, salt: str) -> str:
+def argon2_hash(s: bytes, salt: str) -> str:
     ph = PasswordHasher()
     try:
         # This generates its own salt, but we use verification instead
@@ -54,7 +54,7 @@ def argon2(s: bytes, salt: str) -> str:
         return ""
 
 
-def crypt(s: bytes, salt: str) -> str:
+def crypt_hash(s: bytes, salt: str) -> str:
     return crypt.crypt(s.decode(), salt)
 
 # --- HASHING FUNCTION SELECTOR ---
@@ -69,9 +69,9 @@ def getHash(type):
         "sha384": sha384,
         "sha512": sha512,
         "scrypt": scrypt,
-        "bcrypt": bcrypt,
-        "argon2": argon2,
-        "crypt": crypt,
+        "bcrypt": bcrypt_hash,
+        "argon2": argon2_hash,
+        "crypt": crypt_hash,
     }
     return hash_map.get(type.lower(), None)
 
@@ -194,7 +194,7 @@ class CPUCracker:
 
 if __name__ == '__main__':
     if len(sys.argv) != 3:
-        print("Usage: python3 cracker.py <hash_type> <target_hash>")
+        print("Usage: python3 CPUCracker.py <hash_type> <target_hash>")
         sys.exit(1)
 
     hash_type = sys.argv[1]

@@ -555,7 +555,7 @@ public:
     {
         initialize();
         setType(hashtype);
-        const char *charset = "abcdefghijklmnopqrstuvwxyz0123456789";
+        const char *charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
         auto hashFunc = getHash(hashtype);
 
         if (!hashFunc)

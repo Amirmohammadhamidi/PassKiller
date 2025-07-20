@@ -4,6 +4,8 @@
 #include <chrono>
 #include "HashCrackerEngine.hpp"
 
+using namespace std;
+
 int main()
 {
     // std::string input = "password";
