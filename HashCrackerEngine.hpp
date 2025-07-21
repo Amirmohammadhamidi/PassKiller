@@ -204,6 +204,13 @@ private:
     }
 
 public:
+    static uint32_t swapEndian(uint32_t n)
+    {
+        return ((n & 0xFF000000) >> 24) |
+               ((n & 0x00FF0000) >> 8) |
+               ((n & 0x0000FF00) << 8) |
+               ((n & 0x000000FF) << 24);
+    }
     static std::string hash(const std::string &input)
     {
         uint32_t h0 = 0x67452301;
@@ -320,6 +327,13 @@ private:
     }
 
 public:
+    static uint32_t swapEndian(uint32_t n)
+    {
+        return ((n & 0xFF000000) >> 24) |
+               ((n & 0x00FF0000) >> 8) |
+               ((n & 0x0000FF00) << 8) |
+               ((n & 0x000000FF) << 24);
+    }
     static std::string hash(const std::string &input)
     {
         uint32_t hash[8] = {
@@ -1138,10 +1152,9 @@ private:
 };
 
 //=================== GPU Crackers ====================
-//
 // GPU brute-force MD5 cracker (real GPU implementation)
 // This class calls our CUDA wrapper declared in MD5GPUKernel.h.
-//
+
 #ifdef USE_CUDA
 #include "MD5GPUKernel.h"
 class MD5BruteforceGPUCracker : public HashCrackerEngine
@@ -1183,6 +1196,92 @@ public:
 };
 #endif
 
+// GPU brute-force SHA1 cracker (real GPU implementation)
+// This class calls our CUDA wrapper declared in SHA1GPUKernel.h.
+
+#ifdef USE_CUDA
+#include "SHA1GPUKernel.h"
+class SHA1BruteforceGPUCracker : public HashCrackerEngine
+{
+public:
+    std::string crack(const std::string &targetHash,
+                      const std::vector<std::string> & /*unused*/) override
+    {
+        isRunning = true;
+        passwordFound = false;
+        foundPassword.clear();
+
+        int candidateLength = 5;
+        int charsetSize = 73;
+        int numCandidates = static_cast<int>(std::pow(charsetSize, candidateLength));
+        char foundCandidate[6] = {0};
+        bool gpuFound = false;
+
+        runSHA1BruteForceKernel(targetHash.c_str(), foundCandidate, &gpuFound, numCandidates);
+
+        if (gpuFound)
+        {
+            foundPassword = std::string(foundCandidate);
+            passwordFound = true;
+        }
+        isRunning = false;
+        return foundPassword;
+    }
+};
+#else
+class SHA1BruteforceGPUCracker : public HashCrackerEngine
+{
+public:
+    std::string crack(const std::string &, const std::vector<std::string> &) override
+    {
+        return "CUDA not enabled";
+    }
+};
+#endif
+
+// GPU brute-force SHA256 cracker (real GPU implementation)
+// This class calls our CUDA wrapper declared in SHA256GPUKernel.h.
+
+#ifdef USE_CUDA
+#include "SHA256GPUKernel.h"
+class SHA256BruteforceGPUCracker : public HashCrackerEngine
+{
+public:
+    std::string crack(const std::string &targetHash,
+                      const std::vector<std::string> & /*unused*/) override
+    {
+        isRunning = true;
+        passwordFound = false;
+        foundPassword.clear();
+
+        int candidateLength = 5;
+        int charsetSize = 73;
+        int numCandidates = static_cast<int>(std::pow(charsetSize, candidateLength));
+        char foundCandidate[6] = {0};
+        bool gpuFound = false;
+
+        runSHA256BruteForceKernel(targetHash.c_str(), foundCandidate, &gpuFound, numCandidates);
+
+        if (gpuFound)
+        {
+            foundPassword = std::string(foundCandidate);
+            passwordFound = true;
+        }
+        isRunning = false;
+        return foundPassword;
+    }
+};
+#else
+class SHA256BruteforceGPUCracker : public HashCrackerEngine
+{
+public:
+    std::string crack(const std::string &, const std::vector<std::string> &) override
+    {
+        return "CUDA not enabled";
+    }
+};
+#endif
+
 // ==================== CRACKER MANAGER ====================
 class HashCrackerManager
 {
@@ -1191,28 +1290,28 @@ public:
     HashCrackerManager()
     {
         // --- MD5 Crackers ---
-        crackers["md5_cpu"] = std::make_unique<MD5CPUWordlistCracker>();
-        crackers["md5_gpu"] = std::make_unique<MD5GPUWordlistCracker>();
         crackers["md5_bruteforce_cpu"] = std::make_unique<MD5BruteforceCPUCracker>();
         crackers["md5_bruteforce_gpu"] = std::make_unique<MD5BruteforceGPUCracker>();
+        crackers["md5_wordlist_cpu"] = std::make_unique<MD5CPUWordlistCracker>();
+        crackers["md5_wordlist_gpu"] = std::make_unique<MD5GPUWordlistCracker>();
 
         // --- SHA1 Crackers ---
-        crackers["sha1_cpu"] = std::make_unique<SHA1CPUWordlistCracker>();
-        crackers["sha1_gpu"] = std::make_unique<SHA1GPUWordlistCracker>();
         crackers["sha1_bruteforce_cpu"] = std::make_unique<SHA1BruteforceCPUCracker>();
         crackers["sha1_bruteforce_gpu"] = std::make_unique<SHA1BruteforceGPUCracker>();
+        crackers["sha1_wordlist_cpu"] = std::make_unique<SHA1CPUWordlistCracker>();
+        crackers["sha1_wordlist_gpu"] = std::make_unique<SHA1GPUWordlistCracker>();
 
         // --- SHA256 Crackers ---
-        crackers["sha256_cpu"] = std::make_unique<SHA256CPUWordlistCracker>();
-        crackers["sha256_gpu"] = std::make_unique<SHA256GPUWordlistCracker>();
         crackers["sha256_bruteforce_cpu"] = std::make_unique<SHA256BruteforceCPUCracker>();
         crackers["sha256_bruteforce_gpu"] = std::make_unique<SHA256BruteforceGPUCracker>();
+        crackers["sha256_wordlist_cpu"] = std::make_unique<SHA256CPUWordlistCracker>();
+        crackers["sha256_wordlist_gpu"] = std::make_unique<SHA256GPUWordlistCracker>();
 
         // --- SHA512 Crackers ---
-        crackers["sha512_cpu"] = std::make_unique<SHA512CPUWordlistCracker>();
-        crackers["sha512_gpu"] = std::make_unique<SHA512GPUWordlistCracker>();
         crackers["sha512_bruteforce_cpu"] = std::make_unique<SHA512BruteforceCPUCracker>();
-        crackers["sha512_bruteforce_gpu"] = std::make_unique<SHA512BruteforceGPUCracker>();
+        // crackers["sha512_bruteforce_gpu"] = std::make_unique<SHA512BruteforceGPUCracker>();
+        crackers["sha512_wordlist_cpu"] = std::make_unique<SHA512CPUWordlistCracker>();
+        crackers["sha512_wordlist_gpu"] = std::make_unique<SHA512GPUWordlistCracker>();
     }
 
     std::string crackHash(const std::string &hash,
