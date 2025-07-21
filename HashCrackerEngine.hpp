@@ -872,47 +872,27 @@ public:
     {
         isRunning = true;
         passwordFound = false;
-        foundPassword.clear();
         found.store(false);
+        foundPassword.clear();
 
-        // Total candidate count for 5-character strings (36^5)
-        const int totalCandidates = 60466176;
-        // Number of threads to launch
-        const int numThreads = 1000;
-        // Candidate range per thread
-        int segment = totalCandidates / numThreads;
-        std::string charset = "abcdefghijklmnopqrstuvwxyz0123456789";
+        const std::string charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        const int maxLength = 6;
+        const int numThreads = charset.size(); // 62 threads
 
         std::vector<std::future<void>> futures;
-        for (int i = 0; i < numThreads; i++)
+
+        for (char firstChar : charset)
         {
-            int startIdx = i * segment;
-            int endIdx = (i == numThreads - 1) ? totalCandidates : (i + 1) * segment;
-            futures.push_back(std::async(std::launch::async, [&, startIdx, endIdx, targetHash, charset]()
+            futures.push_back(std::async(std::launch::async, [&, firstChar, targetHash, charset]()
                                          {
-                for (int idx = startIdx; idx < endIdx; idx++) {
-                    if(found.load())
-                        break;
-                    // Convert idx into a 5-character candidate (base-36 conversion)
-                    std::string candidate(5, ' ');
-                    int temp = idx;
-                    for (int pos = 4; pos >= 0; pos--) {
-                        candidate[pos] = charset[temp % 36];
-                        temp /= 36;
-                    }
-                    if(MD5::hash(candidate) == targetHash) {
-                        std::lock_guard<std::mutex> lock(mtx);
-                        if(!found.load()){
-                            found = true;
-                            foundPassword = candidate;
-                            passwordFound = true;
-                        }
-                        break;
-                    }
-                } }));
+                                             std::string prefix(1, firstChar);
+                                             generateAndCheck(prefix, targetHash, charset, maxLength - 1); // We already have one character
+                                         }));
         }
+
         for (auto &fut : futures)
             fut.wait();
+
         isRunning = false;
         return foundPassword;
     }
@@ -920,6 +900,39 @@ public:
 private:
     std::atomic<bool> found{false};
     std::mutex mtx;
+
+    void generateAndCheck(const std::string &prefix, const std::string &targetHash,
+                          const std::string &charset, int remaining)
+    {
+        if (found.load())
+            return;
+
+        if (prefix.length() > 6)
+            return;
+
+        // Check current candidate
+        if (MD5::hash(prefix) == targetHash)
+        {
+            std::lock_guard<std::mutex> lock(mtx);
+            if (!found.load())
+            {
+                found = true;
+                foundPassword = prefix;
+                passwordFound = true;
+            }
+            return;
+        }
+
+        if (remaining <= 0)
+            return;
+
+        for (char c : charset)
+        {
+            if (found.load())
+                break;
+            generateAndCheck(prefix + c, targetHash, charset, remaining - 1);
+        }
+    }
 };
 
 // High-performance CPU brute-force SHA1 cracker
@@ -934,42 +947,23 @@ public:
         foundPassword.clear();
         found.store(false);
 
-        const int totalCandidates = 60466176; // 36^5
-        const int numThreads = 1000;
-        int segment = totalCandidates / numThreads;
-        std::string charset = "abcdefghijklmnopqrstuvwxyz0123456789";
+        const std::string charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        const int maxLength = 6;
 
         std::vector<std::future<void>> futures;
-        for (int i = 0; i < numThreads; i++)
+
+        for (char c : charset)
         {
-            int startIdx = i * segment;
-            int endIdx = (i == numThreads - 1) ? totalCandidates : (i + 1) * segment;
-            futures.push_back(std::async(std::launch::async, [&, startIdx, endIdx, targetHash, charset]()
-                                         {
-                for (int idx = startIdx; idx < endIdx; idx++) {
-                    if(found.load()) break;
-                    
-                    std::string candidate(5, ' ');
-                    int temp = idx;
-                    for (int pos = 4; pos >= 0; pos--) {
-                        candidate[pos] = charset[temp % 36];
-                        temp /= 36;
-                    }
-                    
-                    if(SHA1::hash(candidate) == targetHash) {
-                        std::lock_guard<std::mutex> lock(mtx);
-                        if(!found.load()) {
-                            found = true;
-                            foundPassword = candidate;
-                            passwordFound = true;
-                        }
-                        break;
-                    }
-                } }));
+            futures.emplace_back(std::async(std::launch::async, [&, c]()
+                                            {
+                                                std::string prefix(1, c);
+                                                generate(prefix, targetHash, charset, maxLength - 1); // already 1 char used
+                                            }));
         }
 
         for (auto &fut : futures)
             fut.wait();
+
         isRunning = false;
         return foundPassword;
     }
@@ -977,6 +971,35 @@ public:
 private:
     std::atomic<bool> found{false};
     std::mutex mtx;
+
+    void generate(const std::string &current, const std::string &targetHash,
+                  const std::string &charset, int remaining)
+    {
+        if (found.load())
+            return;
+
+        if (SHA1::hash(current) == targetHash)
+        {
+            std::lock_guard<std::mutex> lock(mtx);
+            if (!found.load())
+            {
+                found = true;
+                foundPassword = current;
+                passwordFound = true;
+            }
+            return;
+        }
+
+        if (remaining <= 0)
+            return;
+
+        for (char c : charset)
+        {
+            if (found.load())
+                return;
+            generate(current + c, targetHash, charset, remaining - 1);
+        }
+    }
 };
 
 // High-performance CPU brute-force SHA256 cracker
@@ -991,42 +1014,23 @@ public:
         foundPassword.clear();
         found.store(false);
 
-        const int totalCandidates = 60466176; // 36^5
-        const int numThreads = 1000;
-        int segment = totalCandidates / numThreads;
-        std::string charset = "abcdefghijklmnopqrstuvwxyz0123456789";
+        const std::string charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        const int maxLength = 6;
 
         std::vector<std::future<void>> futures;
-        for (int i = 0; i < numThreads; i++)
+
+        for (char c : charset)
         {
-            int startIdx = i * segment;
-            int endIdx = (i == numThreads - 1) ? totalCandidates : (i + 1) * segment;
-            futures.push_back(std::async(std::launch::async, [&, startIdx, endIdx, targetHash, charset]()
-                                         {
-                for (int idx = startIdx; idx < endIdx; idx++) {
-                    if(found.load()) break;
-                    
-                    std::string candidate(5, ' ');
-                    int temp = idx;
-                    for (int pos = 4; pos >= 0; pos--) {
-                        candidate[pos] = charset[temp % 36];
-                        temp /= 36;
-                    }
-                    
-                    if(SHA256::hash(candidate) == targetHash) {
-                        std::lock_guard<std::mutex> lock(mtx);
-                        if(!found.load()) {
-                            found = true;
-                            foundPassword = candidate;
-                            passwordFound = true;
-                        }
-                        break;
-                    }
-                } }));
+            futures.emplace_back(std::async(std::launch::async, [&, c]()
+                                            {
+                                                std::string prefix(1, c);
+                                                generate(prefix, targetHash, charset, maxLength - 1); // already 1 char used
+                                            }));
         }
 
         for (auto &fut : futures)
             fut.wait();
+
         isRunning = false;
         return foundPassword;
     }
@@ -1034,6 +1038,35 @@ public:
 private:
     std::atomic<bool> found{false};
     std::mutex mtx;
+
+    void generate(const std::string &current, const std::string &targetHash,
+                  const std::string &charset, int remaining)
+    {
+        if (found.load())
+            return;
+
+        if (SHA256::hash(current) == targetHash)
+        {
+            std::lock_guard<std::mutex> lock(mtx);
+            if (!found.load())
+            {
+                found = true;
+                foundPassword = current;
+                passwordFound = true;
+            }
+            return;
+        }
+
+        if (remaining <= 0)
+            return;
+
+        for (char c : charset)
+        {
+            if (found.load())
+                return;
+            generate(current + c, targetHash, charset, remaining - 1);
+        }
+    }
 };
 
 // High-performance CPU brute-force SHA512 cracker
@@ -1048,42 +1081,23 @@ public:
         foundPassword.clear();
         found.store(false);
 
-        const int totalCandidates = 60466176; // 36^5
-        const int numThreads = 1000;
-        int segment = totalCandidates / numThreads;
-        std::string charset = "abcdefghijklmnopqrstuvwxyz0123456789";
+        const std::string charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        const int maxLength = 6;
 
         std::vector<std::future<void>> futures;
-        for (int i = 0; i < numThreads; i++)
+
+        for (char c : charset)
         {
-            int startIdx = i * segment;
-            int endIdx = (i == numThreads - 1) ? totalCandidates : (i + 1) * segment;
-            futures.push_back(std::async(std::launch::async, [&, startIdx, endIdx, targetHash, charset]()
-                                         {
-                for (int idx = startIdx; idx < endIdx; idx++) {
-                    if(found.load()) break;
-                    
-                    std::string candidate(5, ' ');
-                    int temp = idx;
-                    for (int pos = 4; pos >= 0; pos--) {
-                        candidate[pos] = charset[temp % 36];
-                        temp /= 36;
-                    }
-                    
-                    if(SHA512::hash(candidate) == targetHash) {
-                        std::lock_guard<std::mutex> lock(mtx);
-                        if(!found.load()) {
-                            found = true;
-                            foundPassword = candidate;
-                            passwordFound = true;
-                        }
-                        break;
-                    }
-                } }));
+            futures.emplace_back(std::async(std::launch::async, [&, c]()
+                                            {
+                                                std::string prefix(1, c);
+                                                generate(prefix, targetHash, charset, maxLength - 1); // Already used one char
+                                            }));
         }
 
         for (auto &fut : futures)
             fut.wait();
+
         isRunning = false;
         return foundPassword;
     }
@@ -1091,6 +1105,36 @@ public:
 private:
     std::atomic<bool> found{false};
     std::mutex mtx;
+
+    void generate(const std::string &current, const std::string &targetHash,
+                  const std::string &charset, int remaining)
+    {
+        if (found.load())
+            return;
+
+        // Check current string
+        if (SHA512::hash(current) == targetHash)
+        {
+            std::lock_guard<std::mutex> lock(mtx);
+            if (!found.load())
+            {
+                found = true;
+                foundPassword = current;
+                passwordFound = true;
+            }
+            return;
+        }
+
+        if (remaining <= 0)
+            return;
+
+        for (char c : charset)
+        {
+            if (found.load())
+                return;
+            generate(current + c, targetHash, charset, remaining - 1);
+        }
+    }
 };
 
 //
