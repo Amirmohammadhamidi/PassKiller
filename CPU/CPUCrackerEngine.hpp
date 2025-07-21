@@ -555,18 +555,25 @@ public:
     {
         initialize();
         setType(hashtype);
-        const char *charset = "abcdefghijklmnopqrstuvwxyz0123456789";
-        auto hashFunc = getHash(hashtype);
 
+        static constexpr const char *charset = "abcdefghijklmnopqrstuvwxyz0123456789";
+        static constexpr int charsetLen = 36;
+
+        auto hashFunc = getHash(hashtype);
         if (!hashFunc)
         {
             std::cerr << "Invalid hash type: " << hashtype << "\n";
             return "";
         }
 
+        char buffer[6] = {}; // max length = 5 + null terminator
+
         try
         {
-            generate_combination("", charset, 0, targetHash, hashFunc);
+            for (int len = 1; len <= 5; ++len)
+            {
+                generate_iterative(buffer, 0, len, charset, charsetLen, targetHash, hashFunc);
+            }
         }
         catch (const PasswordFoundException &)
         {
@@ -576,24 +583,31 @@ public:
     }
 
 private:
-    void generate_combination(const std::string &str, const char *charset, int length,
-                              const std::string &targetHash, HashFunc hashFunc)
+    void generate_iterative(char *buffer, int depth, int maxDepth,
+                            const char *charset, int charsetLen,
+                            const std::string &targetHash,
+                            const HashFunc &hashFunc)
     {
-        if (length > 5 || !running())
+        if (!running())
             return;
 
-        for (int i = 0; charset[i] != '\0'; ++i)
+        if (depth == maxDepth)
         {
-            std::string new_str = str + charset[i];
-
-            if (hashFunc(new_str) == targetHash)
+            buffer[depth] = '\0';
+            std::string_view candidate(buffer);
+            if (hashFunc(std::string(candidate)) == targetHash)
             {
                 passwordFound = true;
-                foundPassword = new_str;
+                foundPassword = candidate;
                 throw PasswordFoundException();
             }
+            return;
+        }
 
-            generate_combination(new_str, charset, length + 1, targetHash, hashFunc);
+        for (int i = 0; i < charsetLen; ++i)
+        {
+            buffer[depth] = charset[i];
+            generate_iterative(buffer, depth + 1, maxDepth, charset, charsetLen, targetHash, hashFunc);
         }
     }
 };

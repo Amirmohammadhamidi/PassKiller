@@ -193,7 +193,7 @@ class CPUCracker:
 
 
 if __name__ == '__main__':
-    print("Usage: <hash_type> <target_hash>")
+    print("Usage example: <hash> <hash_type>")
     print("Supported types: md5, sha1, sha224, sha256, sha384, sha512, scrypt, bcrypt, argon2, crypt")
     print("To exit the program, type: exit")
 
@@ -201,7 +201,7 @@ if __name__ == '__main__':
 
     # while True:
     try:
-        user_input = input("Enter hash_type and hash: ").strip()
+        user_input = input("\n>>>").strip()
         if user_input.lower() == "exit":
             print("Exiting...")
             # break
@@ -209,13 +209,14 @@ if __name__ == '__main__':
 
         parts = user_input.split(maxsplit=1)
         if len(parts) != 2:
-            print("Invalid format. Use: <hash_type> <target_hash>")
+            print("Invalid format. Use: <hash> <hash_type>")
             # continue
             sys.exit()
 
-        hash_type, target_hash = parts
+        target_hash, hash_type = parts
         print(f"[*] Cracking {hash_type} hash: {target_hash}")
         result = cracker.crack(hash_type, target_hash)
+
 
         if result:
             print(f"[+] Password found: {result}")
