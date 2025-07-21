@@ -7,6 +7,7 @@ import sys
 # import crypt
 import bcrypt
 from argon2 import PasswordHasher, exceptions as argon2_exceptions
+import multiprocessing
 
 # --- HASHING ALGORITHMS ---
 
@@ -54,8 +55,8 @@ def argon2_hash(s: bytes, salt: str) -> str:
         return ""
 
 
-def crypt_hash(s: bytes, salt: str) -> str:
-    return crypt.crypt(s.decode(), salt)
+# def crypt_hash(s: bytes, salt: str) -> str:
+#     return crypt.crypt(s.decode(), salt)
 
 # --- HASHING FUNCTION SELECTOR ---
 
@@ -71,7 +72,7 @@ def getHash(type):
         "scrypt": scrypt,
         "bcrypt": bcrypt_hash,
         "argon2": argon2_hash,
-        "crypt": crypt_hash,
+        # "crypt": crypt_hash,
     }
     return hash_map.get(type.lower(), None)
 
@@ -191,17 +192,18 @@ class CPUCracker:
 
 # --- MAIN EXECUTION ---
 
-
 if __name__ == '__main__':
-    print("Usage example: <hash> <hash_type>")
-    print("Supported types: md5, sha1, sha224, sha256, sha384, sha512, scrypt, bcrypt, argon2, crypt")
-    print("To exit the program, type: exit")
-
+    multiprocessing.freeze_support()
+    print("Usage example: <hash> <hash_type>", flush=True)
+    print("Supported types: md5, sha1, sha224, sha256, sha384, sha512, scrypt, bcrypt, argon2, crypt", flush=True)
+    print("To exit the program, type: exit", flush=True)
+    
     cracker = CPUCracker()
 
     # while True:
     try:
-        user_input = input("\n>>>").strip()
+        user_input = sys.stdin.readline().strip()
+        print(user_input)
         if user_input.lower() == "exit":
             print("Exiting...")
             # break

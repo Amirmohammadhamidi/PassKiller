@@ -8,7 +8,7 @@ import threading
 
 executables = [
     ("CPU", "CPU/CPU.exe"),
-    ("CPUOptimized", "OPTIMIZEDCPU/CPUOptimized.exe"),
+    ("CPUOptimized", "OPTIMIZEDCPU/CPUOptimized.exe")
     # ("GPU", "program3.exe")
 ]
 
@@ -26,28 +26,31 @@ def get_peak_memory_and_time(exe_path, input_data):
         except:
             pass
         peak_mem.append(peak)
-
+    print(f"luanching: {exe_path}")
     process = subprocess.Popen(
         [exe_path],
         stdin=subprocess.PIPE,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
         text=True
     )
+    
     proc = psutil.Process(process.pid)
     peak_mem = []
-
+    
     t = threading.Thread(target=monitor, args=(proc, peak_mem))
     t.start()
-
+    
     start = time.perf_counter()
-    process.communicate(input=input_data)
+    stdout, stderr = process.communicate(input=input_data + "\n")
+    print("[log]", stdout)
     end = time.perf_counter()
-
+    
     t.join()
 
     exec_time = end - start
     mem_kb = peak_mem[0] / 1024 if peak_mem else 0
+    
     return exec_time, mem_kb
 
 with open("inputs.txt", "r") as f:
@@ -65,6 +68,7 @@ with open("results.csv", mode="w", newline='') as file:
     writer.writerow(header)
 
     for input_data in inputs:
+        print(input_data)
         row = [input_data]
         for name, exe in executables:
             try:
