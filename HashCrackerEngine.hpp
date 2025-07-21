@@ -1319,29 +1319,29 @@ public:
     HashCrackerManager()
     {
         // --- MD5 Crackers ---
-        crackers["md5_cpu"] = std::make_unique<MD5CPUWordlistCracker>();
-        crackers["md5_gpu"] = std::make_unique<MD5GPUWordlistCracker>();
         crackers["md5_bruteforce_cpu"] = std::make_unique<MD5BruteforceCPUCracker>();
         crackers["md5_bruteforce_gpu"] = std::make_unique<MD5BruteforceGPUCracker>();
+        crackers["md5_wordlist_cpu"] = std::make_unique<MD5CPUWordlistCracker>();
+        crackers["md5_wordlist_gpu"] = std::make_unique<MD5GPUWordlistCracker>();
 
         // --- SHA1 Crackers ---
-        crackers["sha1_cpu"] = std::make_unique<SHA1CPUWordlistCracker>();
-        crackers["sha1_gpu"] = std::make_unique<SHA1GPUWordlistCracker>();
         crackers["sha1_bruteforce_cpu"] = std::make_unique<SHA1BruteforceCPUCracker>();
         crackers["sha1_bruteforce_gpu"] = std::make_unique<SHA1BruteforceGPUCracker>();
+        crackers["sha1_wordlist_cpu"] = std::make_unique<SHA1CPUWordlistCracker>();
+        crackers["sha1_wordlist_gpu"] = std::make_unique<SHA1GPUWordlistCracker>();
 
         // --- SHA256 Crackers ---
-        crackers["sha256_cpu"] = std::make_unique<SHA256CPUWordlistCracker>();
-        crackers["sha256_gpu"] = std::make_unique<SHA256GPUWordlistCracker>();
         crackers["sha256_bruteforce_cpu"] = std::make_unique<SHA256BruteforceCPUCracker>();
         crackers["sha256_bruteforce_gpu"] = std::make_unique<SHA256BruteforceGPUCracker>();
+        crackers["sha256_wordlist_cpu"] = std::make_unique<SHA256CPUWordlistCracker>();
+        crackers["sha256_wordlist_gpu"] = std::make_unique<SHA256GPUWordlistCracker>();
 
         // --- SHA512 Crackers ---
-        crackers["sha512_cpu"] = std::make_unique<SHA512CPUWordlistCracker>();
-        crackers["sha512_gpu"] = std::make_unique<SHA512GPUWordlistCracker>();
         crackers["sha512_bruteforce_cpu"] = std::make_unique<SHA512BruteforceCPUCracker>();
         crackers["sha512_bruteforce_gpu"] = std::make_unique<SHA512BruteforceGPUCracker>();
-    }
+        crackers["sha512_wordlist_cpu"] = std::make_unique<SHA512CPUWordlistCracker>();
+        crackers["sha512_wordlist_gpu"] = std::make_unique<SHA512GPUWordlistCracker>();
+        }
 
     std::string crackHash(const std::string &hash,
                           const std::vector<std::string> &wordlist,

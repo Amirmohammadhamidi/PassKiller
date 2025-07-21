@@ -8,102 +8,51 @@ using namespace std;
 
 int main()
 {
-    // std::string input = "password";
-    // std::string expectedHash = "5f4dcc3b5aa765d61d8327deb882cf99"; // MD5("password")
-    // std::string computedHash = MD5::hash(input);
-
-    // std::cout << "Dictionary Test:" << std::endl;
-    // std::cout << "Input: \"" << input << "\"" << std::endl;
-    // std::cout << "Expected MD5: " << expectedHash << std::endl;
-    // std::cout << "Computed MD5: " << computedHash << std::endl;
-    // if (computedHash == expectedHash)
-    //     std::cout << "MD5 implementation is correct!" << std::endl;
-    // else
-    //     std::cout << "MD5 implementation is incorrect!" << std::endl;
-
-    // std::vector<std::string> wordlist = {"123456", "admin", "letmein", "password", "qwerty"};
     HashCrackerManager manager;
 
-    // {
-    //     auto start = std::chrono::high_resolution_clock::now();
-    //     std::string cracked = manager.crackHash(expectedHash, wordlist, "md5", "cpu");
-    //     auto end = std::chrono::high_resolution_clock::now();
-    //     std::chrono::duration<double> elapsed = end - start;
-    //     std::cout << "\n[MD5 (CPU)] Cracked password: " << cracked << std::endl;
-    //     std::cout << "[MD5 (CPU)] Time taken: " << elapsed.count() << " seconds" << std::endl;
-    // }
-
-    // {
-    //     auto start = std::chrono::high_resolution_clock::now();
-    //     std::string cracked = manager.crackHash(expectedHash, wordlist, "md5", "gpu");
-    //     auto end = std::chrono::high_resolution_clock::now();
-    //     std::chrono::duration<double> elapsed = end - start;
-    //     std::cout << "\n[MD5 (GPU)] Cracked password: " << cracked << std::endl;
-    //     std::cout << "[MD5 (GPU)] Time taken: " << elapsed.count() << " seconds" << std::endl;
-    // }
-
+    cout << "GPU Craker" << endl;
     cout << "Usage example: <hash> <hash_type>" << endl;
     cout << "Supported types: md5, sha1, sha256" << endl;
     cout << "To exit the program, type: exit" << endl;
 
     while (true)
     {
-        std::cout << "\n>>> ";
+        cout << "\n>>> ";
 
-        std::string input;
-        std::cin >> input;
+        string input;
+        getline(cin, input);
         if (input == "exit")
             break;
-        // std::string bfExpectedHash = MD5::hash(input);
-        // std::cout << "\nBrute-force Test:" << std::endl;
-        // std::cout << "Brute-force target password (5 letters): \"" << input << "\"" << std::endl;
-        // std::cout << "Expected MD5: " << bfExpectedHash << std::endl;
 
+        istringstream iss(input);
+        string hash, type;
+        vector<string> tokens;
+
+        string token;
+        while (iss >> token)
+            tokens.push_back(token);
+
+        if (tokens.size() != 2)
         {
-            auto start = std::chrono::high_resolution_clock::now();
-            std::string cracked = manager.crackHash(input, {}, "md5_bruteforce", "gpu");
-            auto end = std::chrono::high_resolution_clock::now();
-            std::chrono::duration<double> elapsed = end - start;
-            if (cracked.empty())
-                std::cout << "[MD5 Brute-force (GPU )] Password not found!" << std::endl;
-            else
-                std::cout << "[MD5 Brute-force (GPU)] Cracked password: " << cracked << std::endl;
-            std::cout << "[MD5 Brute-force (GPU)] Time taken: " << elapsed.count() << " seconds" << std::endl;
+            cout << "[!] Invalid input format. Use: <hash> <hash_type>" << endl;
+            continue;
         }
+
+        hash = tokens[0];
+        type = tokens[1];
+
+        type += "_bruteforce";
+
+        auto start = std::chrono::high_resolution_clock::now();
+        std::string cracked = manager.crackHash(hash, {}, type, "gpu");
+        auto end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> elapsed = end - start;
+        if (cracked.empty())
+            std::cout << "Password not found!" << std::endl;
+        else
+            std::cout << "Cracked password: " << cracked << std::endl;
+        std::cout << "Time taken: " << elapsed.count() << " seconds" << std::endl;
     }
-    {
-        /* code */
-    }
-
-    // std::string bfTestPassword = "85859";
-    // std::string bfExpectedHash = MD5::hash(bfTestPassword);
-    // std::cout << "\nBrute-force Test:" << std::endl;
-    // std::cout << "Brute-force target password (5 letters): \"" << bfTestPassword << "\"" << std::endl;
-    // std::cout << "Expected MD5: " << bfExpectedHash << std::endl;
-
-    // {
-    //     auto start = std::chrono::high_resolution_clock::now();
-    //     std::string cracked = manager.crackHash(bfExpectedHash, {}, "md5_bruteforce", "gpu");
-    //     auto end = std::chrono::high_resolution_clock::now();
-    //     std::chrono::duration<double> elapsed = end - start;
-    //     if (cracked.empty())
-    //         std::cout << "[MD5 Brute-force (GPU )] Password not found!" << std::endl;
-    //     else
-    //         std::cout << "[MD5 Brute-force (GPU)] Cracked password: " << cracked << std::endl;
-    //     std::cout << "[MD5 Brute-force (GPU)] Time taken: " << elapsed.count() << " seconds" << std::endl;
-    // }
-
-    // {
-    //     auto start = std::chrono::high_resolution_clock::now();
-    //     std::string cracked = manager.crackHash(bfExpectedHash, {}, "md5_bruteforce", "cpu");
-    //     auto end = std::chrono::high_resolution_clock::now();
-    //     std::chrono::duration<double> elapsed = end - start;
-    //     if (cracked.empty())
-    //         std::cout << "[MD5 Brute-force (CPU)] Password not found!" << std::endl;
-    //     else
-    //         std::cout << "[MD5 Brute-force (CPU)] Cracked password: " << cracked << std::endl;
-    //     std::cout << "[MD5 Brute-force (CPU)] Time taken: " << elapsed.count() << " seconds" << std::endl;
-    // }
 
     return 0;
 }
