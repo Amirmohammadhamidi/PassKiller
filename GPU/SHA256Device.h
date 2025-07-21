@@ -1,3 +1,4 @@
+// ===================== SHA256Device.h =====================
 #ifndef SHA256DEVICE_H
 #define SHA256DEVICE_H
 
@@ -23,25 +24,44 @@ __device__ inline uint32_t ROTR(uint32_t x, uint32_t n)
     return (x >> n) | (x << (32 - n));
 }
 
+// Optimized SHA256 kernel for fixed-length (5-char) brute-force
 __device__ void deviceSHA256(const char *input, uint32_t *output)
 {
     const int inLen = 5;
+
+    // SHA-256 initial hash values
+    uint32_t H[8] = {
+        0x6a09e667, 0xbb67ae85,
+        0x3c6ef372, 0xa54ff53a,
+        0x510e527f, 0x9b05688c,
+        0x1f83d9ab, 0x5be0cd19};
+
+    // Pad message into a 512-bit block (64 bytes)
     uint8_t block[64] = {0};
 #pragma unroll
     for (int i = 0; i < inLen; i++)
         block[i] = input[i];
-    block[inLen] = 0x80;
-    block[63] = inLen * 8;
 
+    block[inLen] = 0x80;
+
+    // Append 64-bit message length in bits (big-endian)
+    uint64_t bitLen = inLen * 8;
+#pragma unroll
+    for (int i = 0; i < 8; i++)
+        block[63 - i] = (bitLen >> (i * 8)) & 0xFF;
+
+    // Message schedule array
     uint32_t w[64];
 #pragma unroll
     for (int i = 0; i < 16; i++)
     {
-        w[i] = (block[i * 4] << 24) |
-               (block[i * 4 + 1] << 16) |
-               (block[i * 4 + 2] << 8) |
-               (block[i * 4 + 3]);
+        w[i] = ((uint32_t)block[i * 4] << 24) |
+               ((uint32_t)block[i * 4 + 1] << 16) |
+               ((uint32_t)block[i * 4 + 2] << 8) |
+               ((uint32_t)block[i * 4 + 3]);
     }
+
+#pragma unroll
     for (int i = 16; i < 64; i++)
     {
         uint32_t s0 = ROTR(w[i - 15], 7) ^ ROTR(w[i - 15], 18) ^ (w[i - 15] >> 3);
@@ -49,14 +69,17 @@ __device__ void deviceSHA256(const char *input, uint32_t *output)
         w[i] = w[i - 16] + s0 + w[i - 7] + s1;
     }
 
-    uint32_t a = 0x6a09e667, b = 0xbb67ae85, c = 0x3c6ef372, d = 0xa54ff53a;
-    uint32_t e = 0x510e527f, f = 0x9b05688c, g = 0x1f83d9ab, h = 0x5be0cd19;
+    // Initialize working variables
+    uint32_t a = H[0], b = H[1], c = H[2], d = H[3];
+    uint32_t e = H[4], f = H[5], g = H[6], h = H[7];
 
+#pragma unroll
     for (int i = 0; i < 64; i++)
     {
         uint32_t S1 = ROTR(e, 6) ^ ROTR(e, 11) ^ ROTR(e, 25);
         uint32_t ch = (e & f) ^ (~e & g);
         uint32_t temp1 = h + S1 + ch + k256[i] + w[i];
+
         uint32_t S0 = ROTR(a, 2) ^ ROTR(a, 13) ^ ROTR(a, 22);
         uint32_t maj = (a & b) ^ (a & c) ^ (b & c);
         uint32_t temp2 = S0 + maj;
@@ -71,14 +94,15 @@ __device__ void deviceSHA256(const char *input, uint32_t *output)
         a = temp1 + temp2;
     }
 
-    output[0] = a;
-    output[1] = b;
-    output[2] = c;
-    output[3] = d;
-    output[4] = e;
-    output[5] = f;
-    output[6] = g;
-    output[7] = h;
+    // Final hash = initial + results
+    output[0] = H[0] + a;
+    output[1] = H[1] + b;
+    output[2] = H[2] + c;
+    output[3] = H[3] + d;
+    output[4] = H[4] + e;
+    output[5] = H[5] + f;
+    output[6] = H[6] + g;
+    output[7] = H[7] + h;
 }
 
-#endif
+#endif // SHA256DEVICE_H
