@@ -1,4 +1,3 @@
-// ===================== SHA1Device.h =====================
 #ifndef SHA1DEVICE_H
 #define SHA1DEVICE_H
 
@@ -21,16 +20,24 @@ __device__ void deviceSHA1(const char *input, uint32_t *output)
     uint32_t h3 = 0x10325476;
     uint32_t h4 = 0xC3D2E1F0;
 
-    // Prepare block
+    // Prepare padded message block
     uint8_t block[64] = {0};
 #pragma unroll
     for (int i = 0; i < inLen; i++)
     {
         block[i] = input[i];
     }
-    block[inLen] = 0x80;
-    block[63] = inLen * 8;
+    block[inLen] = 0x80; // SHA-1 padding
 
+    // Append 64-bit big-endian message length (in bits)
+    uint64_t bitLen = inLen * 8;
+#pragma unroll
+    for (int i = 0; i < 8; i++)
+    {
+        block[63 - i] = (bitLen >> (i * 8)) & 0xFF;
+    }
+
+    // Break block into sixteen 32-bit big-endian words
     uint32_t w[80];
 #pragma unroll
     for (int i = 0; i < 16; i++)
@@ -40,13 +47,19 @@ __device__ void deviceSHA1(const char *input, uint32_t *output)
                ((uint32_t)block[i * 4 + 2] << 8) |
                ((uint32_t)block[i * 4 + 3]);
     }
+
+    // Extend to 80 words
+#pragma unroll
     for (int i = 16; i < 80; i++)
     {
         w[i] = leftRotateSHA1(w[i - 3] ^ w[i - 8] ^ w[i - 14] ^ w[i - 16], 1);
     }
 
+    // Initialize working vars
     uint32_t a = h0, b = h1, c = h2, d = h3, e = h4;
 
+    // Main loop
+#pragma unroll
     for (int i = 0; i < 80; i++)
     {
         uint32_t f, k;
@@ -79,11 +92,12 @@ __device__ void deviceSHA1(const char *input, uint32_t *output)
         a = temp;
     }
 
-    output[0] = a;
-    output[1] = b;
-    output[2] = c;
-    output[3] = d;
-    output[4] = e;
+    // Final hash = initial + round results
+    output[0] = h0 + a;
+    output[1] = h1 + b;
+    output[2] = h2 + c;
+    output[3] = h3 + d;
+    output[4] = h4 + e;
 }
 
-#endif
+#endif // SHA1DEVICE_H
