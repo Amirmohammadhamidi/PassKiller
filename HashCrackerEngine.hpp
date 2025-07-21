@@ -1268,49 +1268,6 @@ public:
 };
 #endif
 
-// GPU brute-force SHA512 cracker (real GPU implementation)
-// This class calls our CUDA wrapper declared in SHA512GPUKernel.h.
-
-#ifdef USE_CUDA
-#include "SHA512GPUKernel.h"
-class SHA512BruteforceGPUCracker : public HashCrackerEngine
-{
-public:
-    std::string crack(const std::string &targetHash,
-                      const std::vector<std::string> & /*unused*/) override
-    {
-        isRunning = true;
-        passwordFound = false;
-        foundPassword.clear();
-
-        int candidateLength = 5;
-        int charsetSize = 73;
-        int numCandidates = static_cast<int>(std::pow(charsetSize, candidateLength));
-        char foundCandidate[6] = {0};
-        bool gpuFound = false;
-
-        runSHA512BruteForceKernel(targetHash.c_str(), foundCandidate, &gpuFound, numCandidates);
-
-        if (gpuFound)
-        {
-            foundPassword = std::string(foundCandidate);
-            passwordFound = true;
-        }
-        isRunning = false;
-        return foundPassword;
-    }
-};
-#else
-class SHA512BruteforceGPUCracker : public HashCrackerEngine
-{
-public:
-    std::string crack(const std::string &, const std::vector<std::string> &) override
-    {
-        return "CUDA not enabled";
-    }
-};
-#endif
-
 // ==================== CRACKER MANAGER ====================
 class HashCrackerManager
 {
@@ -1338,10 +1295,10 @@ public:
 
         // --- SHA512 Crackers ---
         crackers["sha512_bruteforce_cpu"] = std::make_unique<SHA512BruteforceCPUCracker>();
-        crackers["sha512_bruteforce_gpu"] = std::make_unique<SHA512BruteforceGPUCracker>();
+        // crackers["sha512_bruteforce_gpu"] = std::make_unique<SHA512BruteforceGPUCracker>();
         crackers["sha512_wordlist_cpu"] = std::make_unique<SHA512CPUWordlistCracker>();
         crackers["sha512_wordlist_gpu"] = std::make_unique<SHA512GPUWordlistCracker>();
-        }
+    }
 
     std::string crackHash(const std::string &hash,
                           const std::vector<std::string> &wordlist,
