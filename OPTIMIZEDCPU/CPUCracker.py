@@ -4,7 +4,7 @@ import re
 from multiprocessing import Pool, cpu_count
 import sys
 
-import crypt
+# import crypt
 import bcrypt
 from argon2 import PasswordHasher, exceptions as argon2_exceptions
 
@@ -199,27 +199,30 @@ if __name__ == '__main__':
 
     cracker = CPUCracker()
 
-    while True:
-        try:
-            user_input = input("Enter hash_type and hash: ").strip()
-            if user_input.lower() == "exit":
-                print("Exiting...")
-                break
+    # while True:
+    try:
+        user_input = input("Enter hash_type and hash: ").strip()
+        if user_input.lower() == "exit":
+            print("Exiting...")
+            # break
+            sys.exit()
 
-            parts = user_input.split(maxsplit=1)
-            if len(parts) != 2:
-                print("Invalid format. Use: <hash_type> <target_hash>")
-                continue
+        parts = user_input.split(maxsplit=1)
+        if len(parts) != 2:
+            print("Invalid format. Use: <hash_type> <target_hash>")
+            # continue
+            sys.exit()
 
-            hash_type, target_hash = parts
-            print(f"[*] Cracking {hash_type} hash: {target_hash}")
-            result = cracker.crack(hash_type, target_hash)
+        hash_type, target_hash = parts
+        print(f"[*] Cracking {hash_type} hash: {target_hash}")
+        result = cracker.crack(hash_type, target_hash)
 
-            if result:
-                print(f"[+] Password found: {result}")
-            else:
-                print("[-] Password not found.")
+        if result:
+            print(f"[+] Password found: {result}")
+        else:
+            print("[-] Password not found.")
 
-        except KeyboardInterrupt:
-            print("\n[!] Interrupted by user.")
-            break
+    except KeyboardInterrupt:
+        print("\n[!] Interrupted by user.")
+        # break
+        sys.exit()

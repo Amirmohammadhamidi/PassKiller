@@ -15,13 +15,14 @@ int main()
     CPUCracker cracker;
     string input;
 
-    while (true)
-    {
+    // while (true)
+    // {
         cout << "\n>>> ";
         getline(cin, input);
 
         if (input == "exit")
-            break;
+            // break;
+            return 0;
 
         istringstream iss(input);
         string hash, type;
@@ -34,7 +35,8 @@ int main()
         if (tokens.size() != 2)
         {
             cout << "[!] Invalid input format. Use: <hash> <hash_type>" << endl;
-            continue;
+            // continue;
+            return 0;
         }
 
         hash = tokens[0];
@@ -51,7 +53,7 @@ int main()
         {
             cout << "[-] Password not found." << endl;
         }
-    }
+    // }
 
     cout
         << "[*] Exiting..." << endl;
