@@ -20,65 +20,76 @@ __constant__ uint32_t d_k[64] = {
     0xf4292244, 0x432aff97, 0xab9423a7, 0xfc93a039,
     0x655b59c3, 0x8f0ccc92, 0xffeff47d, 0x85845dd1,
     0x6fa87e4f, 0xfe2ce6e0, 0xa3014314, 0x4e0811a1,
-    0xf7537e82, 0xbd3af235, 0x2ad7d2bb, 0xeb86d391
-};
+    0xf7537e82, 0xbd3af235, 0x2ad7d2bb, 0xeb86d391};
 __constant__ uint32_t d_s[64] = {
-    7,12,17,22, 7,12,17,22, 7,12,17,22, 7,12,17,22,
-    5,9,14,20, 5,9,14,20, 5,9,14,20, 5,9,14,20,
-    4,11,16,23, 4,11,16,23, 4,11,16,23, 4,11,16,23,
-    6,10,15,21, 6,10,15,21, 6,10,15,21, 6,10,15,21
-};
+    7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22,
+    5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20,
+    4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23,
+    6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21};
 
-__device__ inline char nibble_to_hex(uint8_t nibble) {
+__device__ inline char nibble_to_hex(uint8_t nibble)
+{
     return (nibble < 10) ? ('0' + nibble) : ('a' + (nibble - 10));
 }
 
-__device__ inline uint32_t leftRotate(uint32_t x, uint32_t c) {
+__device__ inline uint32_t leftRotate(uint32_t x, uint32_t c)
+{
     return (x << c) | (x >> (32 - c));
 }
 
 // Optimized __device__ MD5: outputs raw 32-bit hash as uint32_t[4].
 // This version uses constant memory for d_k and d_s and unrolls key loops.
-__device__ void deviceMD5(const char* input, uint32_t* output) {
+__device__ void deviceMD5(const char *input, uint32_t *output)
+{
     const int inLen = 5; // fixed candidate length
     uint32_t a0 = 0x67452301;
     uint32_t b0 = 0xefcdab89;
     uint32_t c0 = 0x98badcfe;
     uint32_t d0 = 0x10325476;
-    
+
     // Prepare 64-byte block.
     unsigned char block[64] = {0};
-    #pragma unroll
-    for (int i = 0; i < inLen; i++) {
+#pragma unroll
+    for (int i = 0; i < inLen; i++)
+    {
         block[i] = input[i];
     }
     block[inLen] = 0x80; // append '1' bit
-    block[56] = 40;     // message length = 5*8 bits
+    block[56] = 40;      // message length = 5*8 bits
 
     // Construct 16 32-bit words.
     uint32_t w[16];
-    #pragma unroll
-    for (int i = 0; i < 16; i++) {
-        w[i] = ((uint32_t)block[i*4]) |
-               (((uint32_t)block[i*4+1]) << 8) |
-               (((uint32_t)block[i*4+2]) << 16) |
-               (((uint32_t)block[i*4+3]) << 24);
+#pragma unroll
+    for (int i = 0; i < 16; i++)
+    {
+        w[i] = ((uint32_t)block[i * 4]) |
+               (((uint32_t)block[i * 4 + 1]) << 8) |
+               (((uint32_t)block[i * 4 + 2]) << 16) |
+               (((uint32_t)block[i * 4 + 3]) << 24);
     }
-    
+
     uint32_t A = a0, B = b0, C = c0, D = d0;
-    #pragma unroll 64
-    for (int i = 0; i < 64; i++) {
+#pragma unroll 64
+    for (int i = 0; i < 64; i++)
+    {
         uint32_t F, g;
-        if (i < 16) {
+        if (i < 16)
+        {
             F = (B & C) | ((~B) & D);
             g = i;
-        } else if (i < 32) {
+        }
+        else if (i < 32)
+        {
             F = (D & B) | ((~D) & C);
             g = (5 * i + 1) & 0x0F; // mod 16 using bitwise AND (if 16 is a power of 2)
-        } else if (i < 48) {
+        }
+        else if (i < 48)
+        {
             F = B ^ C ^ D;
             g = (3 * i + 5) & 0x0F;
-        } else {
+        }
+        else
+        {
             F = C ^ (B | (~D));
             g = (7 * i) & 0x0F;
         }
@@ -88,7 +99,7 @@ __device__ void deviceMD5(const char* input, uint32_t* output) {
         B = B + leftRotate(A + F + d_k[i] + w[g], d_s[i]);
         A = temp;
     }
-    
+
     // Instead of adding original values, output the state directly.
     output[0] = A;
     output[1] = B;

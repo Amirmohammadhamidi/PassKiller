@@ -1137,6 +1137,7 @@ private:
     }
 };
 
+//=================== GPU Crackers ====================
 //
 // GPU brute-force MD5 cracker (real GPU implementation)
 // This class calls our CUDA wrapper declared in MD5GPUKernel.h.
@@ -1189,11 +1190,29 @@ public:
     std::unordered_map<std::string, std::unique_ptr<HashCrackerEngine>> crackers;
     HashCrackerManager()
     {
+        // --- MD5 Crackers ---
         crackers["md5_cpu"] = std::make_unique<MD5CPUWordlistCracker>();
         crackers["md5_gpu"] = std::make_unique<MD5GPUWordlistCracker>();
         crackers["md5_bruteforce_cpu"] = std::make_unique<MD5BruteforceCPUCracker>();
         crackers["md5_bruteforce_gpu"] = std::make_unique<MD5BruteforceGPUCracker>();
+
+        // --- SHA1 Crackers ---
         crackers["sha1_cpu"] = std::make_unique<SHA1CPUWordlistCracker>();
+        crackers["sha1_gpu"] = std::make_unique<SHA1GPUWordlistCracker>();
+        crackers["sha1_bruteforce_cpu"] = std::make_unique<SHA1BruteforceCPUCracker>();
+        crackers["sha1_bruteforce_gpu"] = std::make_unique<SHA1BruteforceGPUCracker>();
+
+        // --- SHA256 Crackers ---
+        crackers["sha256_cpu"] = std::make_unique<SHA256CPUWordlistCracker>();
+        crackers["sha256_gpu"] = std::make_unique<SHA256GPUWordlistCracker>();
+        crackers["sha256_bruteforce_cpu"] = std::make_unique<SHA256BruteforceCPUCracker>();
+        crackers["sha256_bruteforce_gpu"] = std::make_unique<SHA256BruteforceGPUCracker>();
+
+        // --- SHA512 Crackers ---
+        crackers["sha512_cpu"] = std::make_unique<SHA512CPUWordlistCracker>();
+        crackers["sha512_gpu"] = std::make_unique<SHA512GPUWordlistCracker>();
+        crackers["sha512_bruteforce_cpu"] = std::make_unique<SHA512BruteforceCPUCracker>();
+        crackers["sha512_bruteforce_gpu"] = std::make_unique<SHA512BruteforceGPUCracker>();
     }
 
     std::string crackHash(const std::string &hash,
