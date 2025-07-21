@@ -1138,10 +1138,9 @@ private:
 };
 
 //=================== GPU Crackers ====================
-//
 // GPU brute-force MD5 cracker (real GPU implementation)
 // This class calls our CUDA wrapper declared in MD5GPUKernel.h.
-//
+
 #ifdef USE_CUDA
 #include "MD5GPUKernel.h"
 class MD5BruteforceGPUCracker : public HashCrackerEngine
@@ -1177,6 +1176,135 @@ class MD5BruteforceGPUCracker : public HashCrackerEngine
 public:
     std::string crack(const std::string &targetHash,
                       const std::vector<std::string> & /*unused*/) override
+    {
+        return "CUDA not enabled";
+    }
+};
+#endif
+
+// GPU brute-force SHA1 cracker (real GPU implementation)
+// This class calls our CUDA wrapper declared in SHA1GPUKernel.h.
+
+#ifdef USE_CUDA
+#include "SHA1GPUKernel.h"
+class SHA1BruteforceGPUCracker : public HashCrackerEngine
+{
+public:
+    std::string crack(const std::string &targetHash,
+                      const std::vector<std::string> & /*unused*/) override
+    {
+        isRunning = true;
+        passwordFound = false;
+        foundPassword.clear();
+
+        int candidateLength = 5;
+        int charsetSize = 73;
+        int numCandidates = static_cast<int>(std::pow(charsetSize, candidateLength));
+        char foundCandidate[6] = {0};
+        bool gpuFound = false;
+
+        runSHA1BruteForceKernel(targetHash.c_str(), foundCandidate, &gpuFound, numCandidates);
+
+        if (gpuFound)
+        {
+            foundPassword = std::string(foundCandidate);
+            passwordFound = true;
+        }
+        isRunning = false;
+        return foundPassword;
+    }
+};
+#else
+class SHA1BruteforceGPUCracker : public HashCrackerEngine
+{
+public:
+    std::string crack(const std::string &, const std::vector<std::string> &) override
+    {
+        return "CUDA not enabled";
+    }
+};
+#endif
+
+// GPU brute-force SHA256 cracker (real GPU implementation)
+// This class calls our CUDA wrapper declared in SHA256GPUKernel.h.
+
+#ifdef USE_CUDA
+#include "SHA256GPUKernel.h"
+class SHA256BruteforceGPUCracker : public HashCrackerEngine
+{
+public:
+    std::string crack(const std::string &targetHash,
+                      const std::vector<std::string> & /*unused*/) override
+    {
+        isRunning = true;
+        passwordFound = false;
+        foundPassword.clear();
+
+        int candidateLength = 5;
+        int charsetSize = 73;
+        int numCandidates = static_cast<int>(std::pow(charsetSize, candidateLength));
+        char foundCandidate[6] = {0};
+        bool gpuFound = false;
+
+        runSHA256BruteForceKernel(targetHash.c_str(), foundCandidate, &gpuFound, numCandidates);
+
+        if (gpuFound)
+        {
+            foundPassword = std::string(foundCandidate);
+            passwordFound = true;
+        }
+        isRunning = false;
+        return foundPassword;
+    }
+};
+#else
+class SHA256BruteforceGPUCracker : public HashCrackerEngine
+{
+public:
+    std::string crack(const std::string &, const std::vector<std::string> &) override
+    {
+        return "CUDA not enabled";
+    }
+};
+#endif
+
+// GPU brute-force SHA512 cracker (real GPU implementation)
+// This class calls our CUDA wrapper declared in SHA512GPUKernel.h.
+
+#ifdef USE_CUDA
+#include "SHA512GPUKernel.h"
+class SHA512BruteforceGPUCracker : public HashCrackerEngine
+{
+public:
+    std::string crack(const std::string &targetHash,
+                      const std::vector<std::string> & /*unused*/) override
+    {
+        isRunning = true;
+        passwordFound = false;
+        foundPassword.clear();
+
+        int candidateLength = 5;
+        int charsetSize = 73;
+        int numCandidates = static_cast<int>(std::pow(charsetSize, candidateLength));
+        char foundCandidate[6] = {0};
+        bool gpuFound = false;
+
+        runSHA512BruteForceKernel(targetHash.c_str(), foundCandidate, &gpuFound, numCandidates);
+
+        if (gpuFound)
+        {
+            foundPassword = std::string(foundCandidate);
+            passwordFound = true;
+        }
+        isRunning = false;
+        return foundPassword;
+    }
+};
+#else
+class SHA512BruteforceGPUCracker : public HashCrackerEngine
+{
+public:
+    std::string crack(const std::string &, const std::vector<std::string> &) override
     {
         return "CUDA not enabled";
     }

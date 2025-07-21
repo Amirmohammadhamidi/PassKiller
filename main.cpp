@@ -42,21 +42,26 @@ int main()
     //     std::cout << "[MD5 (GPU)] Time taken: " << elapsed.count() << " seconds" << std::endl;
     // }
 
+    cout << "Usage example: <hash> <hash_type>" << endl;
+    cout << "Supported types: md5, sha1, sha256" << endl;
+    cout << "To exit the program, type: exit" << endl;
+
     while (true)
     {
+        std::cout << "\n>>> ";
+
         std::string input;
-        std::cout << "Enter a password to hash (or 'exit' to quit): ";
         std::cin >> input;
         if (input == "exit")
             break;
-        std::string bfExpectedHash = MD5::hash(input);
-        std::cout << "\nBrute-force Test:" << std::endl;
-        std::cout << "Brute-force target password (5 letters): \"" << input << "\"" << std::endl;
-        std::cout << "Expected MD5: " << bfExpectedHash << std::endl;
+        // std::string bfExpectedHash = MD5::hash(input);
+        // std::cout << "\nBrute-force Test:" << std::endl;
+        // std::cout << "Brute-force target password (5 letters): \"" << input << "\"" << std::endl;
+        // std::cout << "Expected MD5: " << bfExpectedHash << std::endl;
 
         {
             auto start = std::chrono::high_resolution_clock::now();
-            std::string cracked = manager.crackHash(bfExpectedHash, {}, "md5_bruteforce", "gpu");
+            std::string cracked = manager.crackHash(input, {}, "md5_bruteforce", "gpu");
             auto end = std::chrono::high_resolution_clock::now();
             std::chrono::duration<double> elapsed = end - start;
             if (cracked.empty())
