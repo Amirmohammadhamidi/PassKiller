@@ -1,16 +1,33 @@
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 
-// ---------- SHA1 Core ----------
-
-uint32_t leftRotate(uint32_t x, uint32_t c)
+static inline uint32_t leftRotateSHA1(uint32_t x, uint32_t c)
 {
     return (x << c) | (x >> (32 - c));
 }
 
-void sha1_process_block(const uint8_t *block, uint32_t *h)
+// CPU SHA-1 for fixed 5-byte input, raw output (no endian swap)
+void cpuSHA1(const char *input, uint32_t *output)
 {
+    const int inLen = 5;
+
+    uint32_t h[5] = {
+        0x67452301,
+        0xEFCDAB89,
+        0x98BADCFE,
+        0x10325476,
+        0xC3D2E1F0};
+
+    uint8_t block[64] = {0};
+    for (int i = 0; i < inLen; i++)
+        block[i] = input[i];
+    block[inLen] = 0x80;
+
+    uint64_t bitLen = inLen * 8;
+    for (int i = 0; i < 8; i++)
+        block[63 - i] = (bitLen >> (i * 8)) & 0xFF;
+
     uint32_t w[80];
     for (int i = 0; i < 16; i++)
     {
@@ -21,7 +38,7 @@ void sha1_process_block(const uint8_t *block, uint32_t *h)
     }
     for (int i = 16; i < 80; i++)
     {
-        w[i] = leftRotate(w[i - 3] ^ w[i - 8] ^ w[i - 14] ^ w[i - 16], 1);
+        w[i] = leftRotateSHA1(w[i - 3] ^ w[i - 8] ^ w[i - 14] ^ w[i - 16], 1);
     }
 
     uint32_t a = h[0], b = h[1], c = h[2], d = h[3], e = h[4];
@@ -50,66 +67,40 @@ void sha1_process_block(const uint8_t *block, uint32_t *h)
             k = 0xCA62C1D6;
         }
 
-        uint32_t temp = leftRotate(a, 5) + f + e + k + w[i];
+        uint32_t temp = leftRotateSHA1(a, 5) + f + e + k + w[i];
         e = d;
         d = c;
-        c = leftRotate(b, 30);
+        c = leftRotateSHA1(b, 30);
         b = a;
         a = temp;
     }
 
-    h[0] += a;
-    h[1] += b;
-    h[2] += c;
-    h[3] += d;
-    h[4] += e;
+    output[0] = h[0] + a;
+    output[1] = h[1] + b;
+    output[2] = h[2] + c;
+    output[3] = h[3] + d;
+    output[4] = h[4] + e;
 }
 
-// ---------- Padded SHA1 ----------
-
-void sha1(const char *input, uint32_t *hash_out)
+// Optional: Print function for testing
+void printSHA1(uint32_t *hash)
 {
-    size_t len = strlen(input);
-    uint64_t bitLen = len * 8;
-
-    uint8_t padded[128] = {0}; // enough for 1 block + padding
-    memcpy(padded, input, len);
-    padded[len] = 0x80;
-
-    size_t padLen = ((len + 9) <= 64) ? 64 : 128;
-    for (int i = 0; i < 8; ++i)
-        padded[padLen - 1 - i] = (bitLen >> (i * 8)) & 0xFF;
-
-    uint32_t h[5] = {
-        0x67452301,
-        0xEFCDAB89,
-        0x98BADCFE,
-        0x10325476,
-        0xC3D2E1F0};
-
-    for (int i = 0; i < padLen; i += 64)
-    {
-        sha1_process_block(&padded[i], h);
-    }
-
     for (int i = 0; i < 5; i++)
     {
-        hash_out[i] = h[i]; // no endian swap
+        printf("%08x", hash[i]);
     }
+    printf("\n");
 }
 
-// ---------- Test Main ----------
-
+// Optional: main function to test
 int main()
 {
-    const char *testInput = "abcde";
+    const char *test = "abcde"; // exactly 5 bytes
     uint32_t hash[5];
-    sha1(testInput, hash);
 
-    printf("SHA-1(\"%s\") = ", testInput);
-    for (int i = 0; i < 5; i++)
-        printf("%08x", hash[i]);
-    printf("\n");
+    cpuSHA1(test, hash);
+    printf("SHA-1 hash: ");
+    printSHA1(hash);
 
     return 0;
 }
