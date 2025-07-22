@@ -1,4 +1,3 @@
-// ===================== SHA256Device.h =====================
 #ifndef SHA256DEVICE_H
 #define SHA256DEVICE_H
 
@@ -24,38 +23,45 @@ __device__ inline uint32_t ROTR(uint32_t x, uint32_t n)
     return (x >> n) | (x << (32 - n));
 }
 
-// Optimized SHA256 kernel for fixed-length (5-char) brute-force
+__device__ inline uint32_t swapEndian(uint32_t x)
+{
+    return ((x >> 24) & 0x000000FF) |
+           ((x >> 8) & 0x0000FF00) |
+           ((x << 8) & 0x00FF0000) |
+           ((x << 24) & 0xFF000000);
+}
+
+// Optimized SHA-256 for fixed-length (5-char) input
 __device__ void deviceSHA256(const char *input, uint32_t *output)
 {
     const int inLen = 5;
 
-    // SHA-256 initial hash values
+    // Initial hash values
     uint32_t H[8] = {
         0x6a09e667, 0xbb67ae85,
         0x3c6ef372, 0xa54ff53a,
         0x510e527f, 0x9b05688c,
         0x1f83d9ab, 0x5be0cd19};
 
-    // Pad message into a 512-bit block (64 bytes)
+    // Message block (64 bytes)
     uint8_t block[64] = {0};
 #pragma unroll
     for (int i = 0; i < inLen; i++)
         block[i] = input[i];
+    block[inLen] = 0x80; // Append '1' bit
 
-    block[inLen] = 0x80;
-
-    // Append 64-bit message length in bits (big-endian)
+    // Append 64-bit message length (in bits, big-endian)
     uint64_t bitLen = inLen * 8;
 #pragma unroll
-    for (int i = 0; i < 8; i++)
+    for (int i = 0; i < 8; ++i)
         block[63 - i] = (bitLen >> (i * 8)) & 0xFF;
 
-    // Message schedule array
+    // Prepare message schedule
     uint32_t w[64];
 #pragma unroll
     for (int i = 0; i < 16; i++)
     {
-        w[i] = ((uint32_t)block[i * 4] << 24) |
+        w[i] = ((uint32_t)block[i * 4 + 0] << 24) |
                ((uint32_t)block[i * 4 + 1] << 16) |
                ((uint32_t)block[i * 4 + 2] << 8) |
                ((uint32_t)block[i * 4 + 3]);
@@ -69,7 +75,7 @@ __device__ void deviceSHA256(const char *input, uint32_t *output)
         w[i] = w[i - 16] + s0 + w[i - 7] + s1;
     }
 
-    // Initialize working variables
+    // Working variables
     uint32_t a = H[0], b = H[1], c = H[2], d = H[3];
     uint32_t e = H[4], f = H[5], g = H[6], h = H[7];
 
@@ -77,7 +83,7 @@ __device__ void deviceSHA256(const char *input, uint32_t *output)
     for (int i = 0; i < 64; i++)
     {
         uint32_t S1 = ROTR(e, 6) ^ ROTR(e, 11) ^ ROTR(e, 25);
-        uint32_t ch = (e & f) ^ (~e & g);
+        uint32_t ch = (e & f) ^ ((~e) & g);
         uint32_t temp1 = h + S1 + ch + k256[i] + w[i];
 
         uint32_t S0 = ROTR(a, 2) ^ ROTR(a, 13) ^ ROTR(a, 22);
@@ -94,15 +100,10 @@ __device__ void deviceSHA256(const char *input, uint32_t *output)
         a = temp1 + temp2;
     }
 
-    // Final hash = initial + results
-    output[0] = H[0] + a;
-    output[1] = H[1] + b;
-    output[2] = H[2] + c;
-    output[3] = H[3] + d;
-    output[4] = H[4] + e;
-    output[5] = H[5] + f;
-    output[6] = H[6] + g;
-    output[7] = H[7] + h;
+    // Final hash (optionally endian swap for output consistency)
+#pragma unroll
+    for (int i = 0; i < 8; i++)
+        output[i] = swapEndian(H[i] + (&a)[i]);
 }
 
 #endif // SHA256DEVICE_H
