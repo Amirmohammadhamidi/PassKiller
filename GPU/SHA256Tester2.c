@@ -1,9 +1,8 @@
-#ifndef SHA256DEVICE_H
-#define SHA256DEVICE_H
-
 #include <stdint.h>
+#include <stdio.h>
+#include <string.h>
 
-__device__ __constant__ uint32_t k256[64] = {
+const uint32_t k256[64] = {
     0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b,
     0x59f111f1, 0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01,
     0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7,
@@ -18,21 +17,18 @@ __device__ __constant__ uint32_t k256[64] = {
     0x682e6ff3, 0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208,
     0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2};
 
-__device__ inline uint32_t ROTR(uint32_t x, uint32_t n)
+uint32_t ROTR(uint32_t x, uint32_t n)
 {
     return (x >> n) | (x << (32 - n));
 }
 
 // Assumes input is null-terminated and ≤55 bytes
-__device__ void deviceSHA256(const char *input, uint32_t *hashOut)
+void cpuSHA256(const char *input, uint32_t *hashOut)
 {
-    int len = 0;
-    while (input[len] != '\0')
-        len++;
+    int len = strlen(input);
 
     uint8_t padded[64] = {0};
-    for (int i = 0; i < len; i++)
-        padded[i] = input[i];
+    memcpy(padded, input, len);
     padded[len] = 0x80;
 
     uint64_t bitLen = len * 8ULL;
@@ -88,4 +84,23 @@ __device__ void deviceSHA256(const char *input, uint32_t *hashOut)
     hashOut[7] = h + 0x5be0cd19;
 }
 
-#endif
+void printHash(uint32_t *hash)
+{
+    for (int i = 0; i < 8; i++)
+    {
+        printf("%08x", hash[i]);
+    }
+    printf("\n");
+}
+
+int main()
+{
+    const char *test = "hello";
+    uint32_t hash[8];
+
+    cpuSHA256(test, hash);
+    printf("SHA-256 hash: ");
+    printHash(hash);
+
+    return 0;
+}
